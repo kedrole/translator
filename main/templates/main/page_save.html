@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if edit %}Изменить{% else %}Добавить{% endif %} сайт{% endblock %}
+{% block content %}
+    <h1>{% if edit %}Изменить{% else %}Добавить{% endif %} сайт</h1>
+    <p align="right"><a href="{% url 'main:site_list' %}">Список сайтов</a></p>
+    <form action="." method="post">
+        {{ form.as_p }}
+        {% csrf_token %}
+        <p><input type="submit" value="Сохранить"></p>
+    </form>
+{% endblock %}

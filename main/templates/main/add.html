@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить ссылку{% endblock %}
+{% block title2 %}Добавить ссылку{% endblock %}
+
+{% block content %}
+
+<form action="." method="post">
+  {% for field in add_site_form %}
+  <div class="mb-4">
+      <label for="{{ field.auto_id }}" class="form-label">{{ field.label }}</label>
+
+      {{field}}
+
+      {% if field.errors %}
+        {% for error in field.errors %}
+        <div class="alert alert-danger">
+          {{error}}
+        </div>
+        {% endfor %}
+      {% endif %}
+  </div>
+  {% endfor %}
+
+  {% csrf_token %}
+
+  <button type="submit" class="btn btn-primary">Добавить</button>
+</form>
+
+
+{% endblock %}

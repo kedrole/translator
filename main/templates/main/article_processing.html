@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Перевод{% endblock %}
+{% block title2 %}Перевод{% endblock %}
+
+
+{% block content %}
+    {% if article_items %}
+        <div class="table-responsive">
+          <table class="table table-striped table-sm">
+            <thead>
+              <tr>
+                <th width="1%">Del</th>
+                <th width="5%">Тип</th>
+                <th width="47%">Оригинал</th>
+                <th width="47%">Перевод</th>
+              </tr>
+            </thead>
+            <tbody id="tr_edit_body">
+              {% for item in article_items %}
+              <tr>
+                <td><button id="a_{{ forloop.counter }}" onclick="del_row(this);">X</button></td>
+                <td>
+                    <select class="select-css" onchange="select_set_style(this)">
+                      {% for type in options_type_list %}
+                      <option value="{{type}}"
+                          {% if type == item.type %}selected="selected"{% endif %}>
+                          {{type|capfirst}}
+                      </option>
+                    {% endfor %}
+                    </select>
+                    <div>{{ item.tag }}</div>
+                </td>
+                <td><div id="divOriginal">{{ item.original }}</div></td>
+                <td><div id="divTranslation" contentEditable>{{ item.translation }}</div></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="container" id="result">
+          <a href="#" onclick="save_article(this)" class="save_button">Сохранить</a>
+          <label id="save_result"></label>
+        </div>
+        
+    {% else %}
+        <p>Контента для перевода нет</p>
+    {% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script type="text/javascript">
+  function del_row(elem) {
+    var tr_elem = elem.parentElement.parentElement
+    tr_elem.id = "deleted"
+    tr_elem.style.display = 'None';
+  }
+
+  window.onload = function() {
+    set_style_all_tr()
+  };
+
+  function set_style_all_tr() {
+    select_list = document.getElementsByClassName("select-css")
+
+    for (var i = 0; i < select_list.length; i++) {
+      select_set_style(select_list[i])
+    }
+  }
+
+  function select_set_style(select) {
+    new_val = select.value
+    
+    tr_parent = select.parentElement.parentElement
+
+    orig_el = tr_parent.children[2].children[0]
+    transl_el = tr_parent.children[3].children[0]
+
+    if (new_val == 'Заголовок') {
+      orig_el.className = 'elem_title'
+      transl_el.className = 'elem_title'
+    }
+    else if (new_val == 'Подзаголовок') {
+      orig_el.className = 'elem_subtitle'
+      transl_el.className = 'elem_subtitle'
+    }
+    else if (new_val == 'Абзац-примечание') {
+      orig_el.className = 'elem_note'
+      transl_el.className = 'elem_note'
+    }
+    else if (new_val == 'Элемент списка') {
+      orig_el.className = 'elem_list'
+      transl_el.className = 'elem_list'
+    }
+    else {
+      orig_el.className = ''
+      transl_el.className = ''
+    }
+  }
+</script>
+
+
+<script type="text/javascript">
+  function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+  }
+
+  function save_article(el) {
+    json = form_json()
+
+    const csrftoken = getCookie('csrftoken');
+    var page = window.location.pathname + "save/"
+    console.log(page)
+
+    console.log(json)
+    var xmlhttp = getXmlHttp(); // Создаём объект XMLHTTP
+    xmlhttp.open('POST', page, true); // Открываем асинхронное соединение
+    xmlhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); // Отправляем кодировку
+    xmlhttp.setRequestHeader('X-CSRFToken', csrftoken);
+    xmlhttp.send("json=" + encodeURIComponent(json)); // Отправляем POST-запрос
+    xmlhttp.onreadystatechange = function() { // Ждём ответа от сервера
+      if (xmlhttp.readyState == 4) { // Ответ пришёл
+        if(xmlhttp.status == 200) { // Сервер вернул код 200 (что хорошо)
+          document.getElementById("save_result").innerText=xmlhttp.responseText + " (Успех) " + Date()
+        }
+        else {
+          document.getElementById("save_result").innerText=xmlhttp.responseText + " (Ошибка) " + Date()
+        }
+      }
+    };
+  }
+
+  function form_json() {
+    trs = document.getElementById("tr_edit_body").children
+
+    res = []
+    for (var i = 0; i < trs.length; i++) {
+      tr = trs[i]
+      if (tr.id == "deleted") {
+        continue;
+      }
+
+      td_type = tr.children[1]
+      td_original = tr.children[2]
+      td_translation = tr.children[3]
+
+      type = get_selected_value(td_type)
+      tag = td_type.children[1].innerHTML
+      original = td_original.children[0].innerHTML
+      translation = td_translation.children[0].innerHTML
+      res.push({type:type, tag:tag, original:original, translation:translation})
+    }
+    return JSON.stringify(res)
+  }
+
+  function get_selected_value(td_type) {
+    select_el = null
+    select_type_el_child = td_type.children[0].children
+    for (var j = 0; j < select_type_el_child.length; j++) {
+      if(select_type_el_child[j].hasAttribute("selected")) {
+        select_el = select_type_el_child[j]
+      }
+    }
+    return select_el.innerText.trim()
+  }
+
+
+  /* Данная функция создаёт кроссбраузерный объект XMLHTTP */
+  function getXmlHttp() {
+    var xmlhttp;
+    try {
+      xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+    } catch (e) {
+    try {
+      xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+    } catch (E) {
+      xmlhttp = false;
+    }
+    }
+    if (!xmlhttp && typeof XMLHttpRequest!='undefined') {
+      xmlhttp = new XMLHttpRequest();
+    }
+    return xmlhttp;
+  }
+
+</script>
+{% endblock %}
