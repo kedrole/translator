@@ -3,23 +3,25 @@
 {% block title %}Перевод{% endblock %}
 {% block title2 %}Перевод{% endblock %}
 
-
 {% block content %}
-    {% if article_items %}
         <div class="table-responsive">
-          <table class="table table-striped table-sm">
+          <table class="table table-striped table-sm edit-tbl">
             <thead>
               <tr>
                 <th width="1%">Del</th>
                 <th width="5%">Тип</th>
                 <th width="47%">Оригинал</th>
                 <th width="47%">Перевод</th>
+                <th width="10px"></th>
               </tr>
             </thead>
-            <tbody id="tr_edit_body">
+            <tbody id="tr_edit_body" class="sortable-ul">
+            {% if article_items %}
               {% for item in article_items %}
-              <tr>
-                <td><button id="a_{{ forloop.counter }}" onclick="del_row(this);">X</button></td>
+              <tr id="tr_item">
+                <td>
+                  <button onclick="del_row(this);">X</button>
+                </td>
                 <td>
                     <select class="select-css" onchange="select_set_style(this)">
                       {% for type in options_type_list %}
@@ -27,35 +29,74 @@
                           {% if type == item.type %}selected="selected"{% endif %}>
                           {{type|capfirst}}
                       </option>
-                    {% endfor %}
+                      {% endfor %}
                     </select>
-                    <div>{{ item.tag }}</div>
+                    <div class="item_tag">{{ item.tag }}</div>
+                    <div class="select_val" style="display: none;"></div>
                 </td>
                 <td><div id="divOriginal">{{ item.original }}</div></td>
                 <td><div id="divTranslation" contentEditable>{{ item.translation }}</div></td>
+                <td>
+                  <div style="float:right; width: 22px; margin-top: -15px;">
+                    <div style="position: absolute;">
+                        <button onclick="add_row(this)">+</button>
+                        <div><i class="handle"></i></div>
+                    </div>
+
+                  </div>
+                </td>
               </tr>
+
               {% endfor %}
+            {% else %}
+
+            {% endif %}
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                  <div style="float:right; width: 22px; margin-top: -15px;">
+                    <div style="position: absolute;">
+                        <button onclick="add_row(this)">+</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="container" id="result">
-          <a href="#" onclick="save_article(this)" class="save_button">Сохранить</a>
-          <label id="save_result"></label>
-        </div>
         
-    {% else %}
-        <p>Контента для перевода нет</p>
-    {% endif %}
+
+
+    <div class="container" id="result">
+      <div><a href="#" onclick="save_article(this)" class="save_button">Сохранить</a></div>
+      <div id="save_result"></div>
+    </div>
 
 {% endblock %}
 
 {% block script %}
 <script type="text/javascript">
+  function add_row(elem) {
+    var tr_elem = elem.parentElement.parentElement.parentElement.parentElement
+    var new_item = '<tr id="tr_item"><td><button onclick="del_row(this);">X</button></td><td><select class="select-css" onchange="select_set_style(this)">{% for type in options_type_list %}<option value="{{type}}" {% if type == "Не определен" %}selected="selected"{% endif %}>{{type|capfirst}}</option>{% endfor %}</select><div class="item_tag">Manual</div></td><td><div id="divOriginal" class="elem_note">Added</div></td><td><div id="divTranslation" contenteditable="" class="elem_note"></div></td>' + '<td><div style="float:right; width: 22px; margin-top: -15px;"><div style="position: absolute;"><button onclick="add_row(this)">+</button></div><div><i class="handle"></i></div></div></td>' + '</tr>'
+
+    tr_elem.outerHTML = new_item + tr_elem.outerHTML
+  }
+
   function del_row(elem) {
     var tr_elem = elem.parentElement.parentElement
-    tr_elem.id = "deleted"
-    tr_elem.style.display = 'None';
+    tr_elem.outerHTML = ""
+
+    // Если потребуется оставить для восстановления
+    // TEST На разных браузерах!!!!!!!!!!!!!!!!
+    //var tr_elem_next_add = tr_elem.nextSibling.nextSibling
+    //tr_elem_next_add.outerHTML = ""
+    //tr_elem.id = "deleted"
+    //tr_elem.style.display = 'None'
   }
 
   window.onload = function() {
@@ -71,6 +112,9 @@
   }
 
   function select_set_style(select) {
+    /* console.log(select.options[select.selectedIndex].text) */
+    select.parentElement.children[2].innerText = select.value
+
     new_val = select.value
     
     tr_parent = select.parentElement.parentElement
@@ -119,11 +163,18 @@
   }
 
   function save_article(el) {
+    result_label = document.getElementById("save_result")
+    
+    preloader_html = '<img src="/static/main/img/preloader.gif" width="30px">'
+    success_load_html = '<img src="/static/main/img/ok.jpg" width="30px">'
+    
+    
+    result_label.innerHTML = preloader_html
+
     json = form_json()
 
     const csrftoken = getCookie('csrftoken');
     var page = window.location.pathname + "save/"
-    console.log(page)
 
     console.log(json)
     var xmlhttp = getXmlHttp(); // Создаём объект XMLHTTP
@@ -134,10 +185,13 @@
     xmlhttp.onreadystatechange = function() { // Ждём ответа от сервера
       if (xmlhttp.readyState == 4) { // Ответ пришёл
         if(xmlhttp.status == 200) { // Сервер вернул код 200 (что хорошо)
-          document.getElementById("save_result").innerText=xmlhttp.responseText + " (Успех) " + Date()
+          result_label.innerHTML = success_load_html
+          setTimeout(function(){
+            result_label.innerHTML = ""
+          }, 10000);
         }
         else {
-          document.getElementById("save_result").innerText=xmlhttp.responseText + " (Ошибка) " + Date()
+          result_label.innerText=xmlhttp.responseText + " (Ошибка) " + Date()
         }
       }
     };
@@ -149,7 +203,7 @@
     res = []
     for (var i = 0; i < trs.length; i++) {
       tr = trs[i]
-      if (tr.id == "deleted") {
+      if (tr.id == "deleted" || tr.id != "tr_item") {
         continue;
       }
 
@@ -157,7 +211,7 @@
       td_original = tr.children[2]
       td_translation = tr.children[3]
 
-      type = get_selected_value(td_type)
+      type = td_type.children[2].innerText
       tag = td_type.children[1].innerHTML
       original = td_original.children[0].innerHTML
       translation = td_translation.children[0].innerHTML
@@ -166,16 +220,6 @@
     return JSON.stringify(res)
   }
 
-  function get_selected_value(td_type) {
-    select_el = null
-    select_type_el_child = td_type.children[0].children
-    for (var j = 0; j < select_type_el_child.length; j++) {
-      if(select_type_el_child[j].hasAttribute("selected")) {
-        select_el = select_type_el_child[j]
-      }
-    }
-    return select_el.innerText.trim()
-  }
 
 
   /* Данная функция создаёт кроссбраузерный объект XMLHTTP */
@@ -197,4 +241,19 @@
   }
 
 </script>
+
+<script>
+  var fixHelper = function(e, ui) {
+    ui.children().each(function() {
+      $(this).width($(this).width());
+    });
+    return ui;
+  };
+
+  $('.sortable-ul').sortable({
+    handle: '.handle',
+    revert: 100,
+    helper: fixHelper
+  });
+  </script>
 {% endblock %}

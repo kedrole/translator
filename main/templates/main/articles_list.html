@@ -1,34 +1,46 @@
 {% extends "base.html" %}
+{% load template_filters %}
 
 {% block title %}Список статей{% endblock %}
 {% block title2 %}Список статей{% endblock %}
 
-
 {% block content %}
-
     <p align="right"><a href="{% url 'main:article_add' %}">Добавить статью</a></p>
     {% if articles %}
         <div class="table-responsive">
-          <table class="table table-striped table-sm">
+          <table class="table table-striped table-sm table-list">
             <thead>
               <tr>
-                <th>Страница сайта</th>
+                <th>Cайт</th>
+                <th width="100px">Список-страница</th>
                 <th>Название статьи</th>
-                <th width="200px">Статус</th>
-                <th width="200px">Процент уникальности оригинала</th>
+                <th width="100px">Статус</th>
+                <th width="50px">% уник оригинала</th>
+                <th width="50px">% уник перевода</th>
                 <th width="100px">Создана</th>
-                <th width="100px">Изменить</th>
+                <th width="50px">Перевести</th>
+                <th width="50px">Изменить</th>
+                <th width="50px">Удалить</th>
               </tr>
             </thead>
             <tbody id="tr_edit_body">
               {% for article in articles %}
               <tr>
-                <td>{{ article.page.content_page }}</td>
-                <td><a href="{% url 'main:article_processing' article.pk %}">{{ article.title }}</a></td>
-                <td>{{ article.status }}</td>
-                <td>{{ article.original_unique_proc }}</td>
-                <td>{{ article.created }}</td>
-                <td><a href="{% url 'main:article_edit' article.pk %}">Изменить</a></td>
+                <td>{{ article.list_page.site.domain_name }}</td>
+                <td><a href="{% url 'main:list_page_process' article.list_page.pk %}">{% if article.list_page.href %}{{ article.list_page.href }}{% else %}Главная{% endif %}</a></td>
+                <td><a href="{{ article.original_page_href }}">{% if article.title %}{{ article.title }}{% else %}Без названия{% endif %}</a></td>
+
+                <td style="font-weight: bold;">{{ article.status }}</td>
+                <td>{% if article.original_unique_percent >= 0 %}<span class="uniq_percent_span" style="background-color: {{ article.original_unique_percent|css_color_style_from_degree }};">{{ article.original_unique_percent }}</span>{% endif %}</td>
+                <td>
+                  <a href="{% url 'main:get_translation_unique' article.pk %}" class="btn-get-translation-unique"><i data-feather="download"></i></a>
+                  {% if article.translation_unique_percent >= 0 %}<span class="uniq_percent_span" style="background-color: {{ article.translation_unique_percent|css_color_style_from_degree }};">{{ article.translation_unique_percent }}</span>{% endif %}
+                </td>
+
+                <td>{{ article.created|date:"d.m.Y H:i:s" }}</td>
+                <td><a href="{% url 'main:article_processing' article.pk %}" class="btn-edit"><i data-feather="edit"></i></a></td>
+                <td><a href="{% url 'main:article_edit' article.pk %}" class="btn-chng"><i data-feather="settings"></i></a></td>
+                <td><a href="{% url 'main:article_del' article.pk %}" class="btn-del"><i data-feather="x"></i></a></td>
               </tr>
               {% endfor %}
             </tbody>
@@ -37,7 +49,7 @@
 
         
     {% else %}
-        <p>Сайтов нет</p>
+        <p>Статей нет</p>
     {% endif %}
 
 {% endblock %}

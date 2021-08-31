@@ -13,14 +13,60 @@ def log(message):
         print(mess)
         f.write(mess + "\n")
 
+class ParserListArticlesPage:
+    def __init__(self, list_page):
+        self.session = requests.Session()
+        self.session.headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25',
+        }
 
-class Parser:
+        self.page_href = "https://" + list_page.site.domain_name + "/" + list_page.href
+        self.preview_tag_name = list_page.site.preview_tag_name
+        self.preview_tag_property_name = list_page.site.preview_tag_property_name
+        self.preview_tag_property_value = list_page.site.preview_tag_property_value
+
+
+    def get_page(self, page):
+        return self.session.get(page).text
+
+    #def tag_starts_with_stopfraze(self, tag):
+    #    if str(tag).startswith(self.stop_fraze):
+    #        return True
+    #    return False
+
+    def get_items_recoursive(self):
+        print("start get_page")
+        page = self.get_page(self.page_href)
+        print("end get_page")
+
+        with open('page_list_articles.html', 'w', encoding='utf-8') as f:
+            f.write(page)
+
+        soup = BeautifulSoup(page, 'html.parser')
+        blocks_articles = soup.find_all(self.preview_tag_name, attrs={self.preview_tag_property_name: self.preview_tag_property_value})
+
+        print("Найдено блоков статей: " + str(len(blocks_articles)))
+
+        return [block.find('a')['href'] for block in blocks_articles if str(type(block)) == "<class 'bs4.element.Tag'>"]
+
+
+
+class ParserArticlePage:
     def __init__(self):
         self.restricted_tags = ['iframe', 'script', 'a']
         self.header_tags = ['h2']
         self.paragraph_tags = ['p']
         self.inner_tags = ['strong', 'i']
-     #   self.stop_fraze = '<p class="dpsp-share-text ">Like it? Share it!'
+        self.stop_frazes = [
+            'Like it? Share it',
+            'Share',
+            'Tweet',
+            'Pin',
+            'LinkedIn',
+            'Email',
+            'Previous Post',
+            'Next Post',
+        ]
 
         self.session = requests.Session()
         self.session.headers = {
@@ -44,12 +90,12 @@ class Parser:
         if str(type(tag)) == "<class 'bs4.element.Tag'>":
             if str(tag.name) in self.paragraph_tags or str(tag.name) in self.header_tags or str(tag.name) == "li":
                 #print(str(tag.name) + "------------------- в списке тегов, добавление текста")
-                if tag.text.strip() == "":
+                if self.block_text_is_garbage(tag.text.strip()):
                     return
 
-                self.res_objects.append({"original": str(tag.text), "tag_name": tag.name, "nesting_lvl": nesting_level})
+                self.res_objects.append({"original": str(tag.text).strip(), "tag": tag.name, "nesting_lvl": nesting_level})
                 
-                #print("\n[" + self.res_objects[-1]['tag_name'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
+                #print("\n[" + self.res_objects[-1]['tag'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
             else:
                 #print(str(tag.name) + "------------------- НЕ в списке тегов")
 
@@ -57,15 +103,27 @@ class Parser:
                     self.add_items_recoursive(desc, str(tag.name), nesting_level + 1)
 
         elif str(type(tag)) == "<class 'bs4.element.NavigableString'>":
-            if str(tag).strip() != "":
+            if self.block_text_is_garbage(str(tag).strip()):
+                return
                 
-                self.res_objects.append({"original": str(tag), "tag_name": tag.parent.name, "nesting_lvl": nesting_level})
-                #print("[" + self.res_objects[-1]['tag_name'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
+            self.res_objects.append({"original": str(tag).strip(), "tag": tag.parent.name, "nesting_lvl": nesting_level})
+            #print("[" + self.res_objects[-1]['tag'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
         #else:
             #print("ТИП: " + str(type(tag)))
 
-class Tastessence(Parser):
-    def get_content_from_article(self, page):
+    def block_text_is_garbage(self, text):
+        if text == "":
+            return True
+
+        text_lower = text.lower()
+        text_len = len(text)
+        for fraze in self.stop_frazes:
+            if (len(fraze) <= text_len <= len(fraze) + 3) and fraze.lower() in text_lower:
+                return True
+
+        return False
+
+    def get_content_from_article(self, article, page):
         self.res_objects = []
 
         soup = BeautifulSoup(page, 'html.parser')
@@ -74,16 +132,19 @@ class Tastessence(Parser):
         print("Title: " + title)
 
         #block_content = soup.find('div', attrs={'class': 'entry-content'})
-        block_content = soup.find('div', attrs={'id': 'k2Container'})
+        #block_content = soup.find('div', attrs={'id': 'k2Container'})
+        block_content = soup.find(article.list_page.site.content_tag_name, attrs={article.list_page.site.content_property_name: article.list_page.site.content_property_value})
 
         self.add_items_recoursive(block_content, "MAIN", 0)
 
         for tag in self.res_objects:
-            print("[" + tag['tag_name'] + " - " + str(tag['nesting_lvl']) + "]  " + tag['original'])
+            print("[" + tag['tag'] + " - " + str(tag['nesting_lvl']) + "]  " + tag['original'])
 
-        return self.res_objects
+        return (title, self.res_objects)
         #print(title.text)
 
+# НЕ ИСПОЛЬЗУЕТСЯ
+class Tastessence(ParserArticlePage):
     def get_items_from_page1(self, page, max_count):
         soup = BeautifulSoup(page, 'html.parser')
 

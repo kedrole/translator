@@ -2,7 +2,6 @@
 {% block title %}{% if edit %}Изменить{% else %}Добавить{% endif %} статью{% endblock %}
 {% block content %}
     <h1>{% if edit %}Изменить{% else %}Добавить{% endif %} статью</h1>
-    <p align="right"><a href="{% url 'main:page_articles' 1 %}">Cтатьи сайта</a></p>
     <p align="right"><a href="{% url 'main:articles_list' %}">Список всех статей</a></p>
     <form action="." method="post">
         {{ form.as_p }}

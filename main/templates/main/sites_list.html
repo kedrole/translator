@@ -3,7 +3,6 @@
 {% block title %}Список сайтов{% endblock %}
 {% block title2 %}Список сайтов{% endblock %}
 
-
 {% block content %}
 
     <p align="right"><a href="{% url 'main:site_add' %}">Добавить сайт</a></p>
@@ -13,20 +12,24 @@
             <thead>
               <tr>
                 <th width="150px">Доменное имя</th>
-                <th width="300px">Страница с контентом</th>
-                <th width="">Тег контента</th>
+                <th width="150px">Список-страницы</th>
+                <th width="">Тег контента страниц на сайте</th>
+                <th width="">Тег превью статьи страницы со списком страниц на сайте</th>
                 <th width="100px">Создан</th>
                 <th width="100px">Изменить</th>
+                <th width="100px">Удалить</th>
               </tr>
             </thead>
             <tbody id="tr_edit_body">
               {% for site in sites %}
               <tr>
                 <td>{{ site.domain_name }}</td>
-                <td>{{ site.content_page }}</td>
+                <td>Страниц с списком статей: {{ site.listpage_set.all|length }}</td>
                 <td>{% if site.content_tag_name %}&lt;{{ site.content_tag_name }} {{ site.content_property_name }}="{{ site.content_property_value }}"&gt;{% endif %}</td>
+                <td>{% if site.preview_tag_name %}&lt;{{ site.preview_tag_name }} {{ site.preview_tag_property_name }}="{{ site.preview_tag_property_value }}"&gt;{% endif %}</td>
                 <td>{{ site.created }}</td>
-                <td><a href="{% url 'main:site_edit' site.pk %}">Изменить</a></td>
+                <td><a href="{% url 'main:site_edit' site.pk %}" class="btn-chng"><i data-feather="settings"></i></a></td>
+                <td><a href="{% url 'main:site_del' site.pk %}" class="btn-del"><i data-feather="x"></i></a></td>
               </tr>
               {% endfor %}
             </tbody>
