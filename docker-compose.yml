@@ -1,0 +1,37 @@
+version: "3"
+
+services: 
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+  redis:
+    image: "redis:alpine"
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+  celery:
+    build: .
+    command: celery -A translator worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+  celery-beat:
+    build: .
+    command: celery -A translator beat -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis

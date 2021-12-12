@@ -1,0 +1,1 @@
+17-10-2021 12:32:51 Ошибка получения страницы https://comparitech.com/?s=siem HTTPSConnectionPool(host='comparitech.com', port=443): Max retries exceeded with url: /?s=siem (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000000000584E400>: Failed to establish a new connection: [Errno 11001] getaddrinfo failed'))

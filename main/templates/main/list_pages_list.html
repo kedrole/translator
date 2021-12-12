@@ -14,6 +14,7 @@
                 <th width="150px">Доменное имя</th>
                 <th width="300px">Страница со списком статей</th>
                 <th width="100px">Статей</th>
+                <th width="100px">Статус</th>
                 <th width="100px">Создан</th>
                 <th width="100px">Изменить</th>
                 <th width="100px">Удалить</th>
@@ -25,6 +26,7 @@
                 <td>{{ list_page.site.domain_name }}</td>
                 <td><a href="{% url 'main:list_page_process' list_page.pk %}">{% if list_page.href %}{{ list_page.href }}{% else %}Главная{% endif %}</a></td>
                 <td>{{ list_page.article_set.all|length }}</td>
+                <td>{% if list_page.in_work == True %}В работе{% else %}Не в работе{% endif %}</td>
                 <td>{{ list_page.created }}</td>
                 <td><a href="{% url 'main:list_page_edit' list_page.pk %}" class="btn-chng"><i data-feather="settings"></i></a></td>
                 <td><a href="{% url 'main:list_page_del' list_page.pk %}" class="btn-del"><i data-feather="x"></i></a></td>

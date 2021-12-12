@@ -23,9 +23,9 @@ class UniqueCheck:
             js = json.loads(a.text)
             print(js)
             uid=js["text_uid"]
-            return ("success", uid)
+            return {"status": "success", "uid": uid}
         except Exception as e:
-            return ("error", "Exception: " + str(e))
+            return {"status": "error", "message": str(e)}
 
     def check_result(self, uid):
         url = "http://api.text.ru/post"
@@ -40,15 +40,15 @@ class UniqueCheck:
 
             if "result_json" in js:
                 js = json.loads(js["result_json"])
-                return ("success", js)
+                return {"status": "success", "result": js}
 
             if "error_code" in js:
                 if int(js["error_code"]) == 181:
-                    return ("not-checked", js)
-                return ("error", js)
+                    return {"status": "not-checked", "message": js}
+                return {"status": "error", "message": js}
 
         except Exception as e:
-            return ("error", "Exception: " + str(e))
+            return {"status": "error", "message": "Exception: " + str(e)}
 
 
 '''

@@ -1,6 +1,6 @@
 from django import forms
 from .models import Site, ListPage, Article
-from django.forms import ModelChoiceField
+from django.forms import ModelChoiceField, NullBooleanField
 
 class SiteEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -10,7 +10,8 @@ class SiteEditForm(forms.ModelForm):
 
     class Meta:
         model = Site
-        fields = ('domain_name', 'content_tag_name', 'content_property_name', 'content_property_value', 'preview_tag_name', 'preview_tag_property_name', 'preview_tag_property_value')
+        exclude = []
+        #fields = ('domain_name', 'content_tag_name', 'content_property_name', 'content_property_value', 'preview_tag_name', 'preview_tag_property_name', 'preview_tag_property_value')
 
 
 class ListPageEditForm(forms.ModelForm):
@@ -25,9 +26,12 @@ class ListPageEditForm(forms.ModelForm):
 
     site = SiteChoiceField(queryset=Site.objects.all(), empty_label=None)
 
+    in_work = NullBooleanField()
+    
     class Meta:
         model = ListPage
-        fields = ('site', 'href')
+        exclude = []
+        #fields = ('site', 'href', 'in_work')
 
 
 class ArticleEditForm(forms.ModelForm):
@@ -44,7 +48,8 @@ class ArticleEditForm(forms.ModelForm):
 
     class Meta:
         model = Article
-        fields = ('title', 'list_page', 'status', 'original_unique_percent')
+        exclude = []
+        #fields = ('title', 'list_page', 'status', 'stage', 'original_unique_percent')
         #widgets = {
         #    'status': forms.Select(attrs={'class': 'form-control'}),
         #}

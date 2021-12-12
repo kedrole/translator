@@ -27,10 +27,6 @@ textarea.form-control {
   font-size: .900rem;
 }
 
-.save_button {
-  font-size: 2em;
-}
-
 body {
   font-size: .900rem;
 }
@@ -66,6 +62,7 @@ body {
   display: block; 
   font-size: 12px; 
   font-family: sans-serif; 
+  /* font-family: "Open Sans"; */ 
   font-weight: 700; 
   color: #444; 
   line-height: 1.1; 
@@ -132,12 +129,33 @@ body {
   
   .handle {
     display: inline-block;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     background: url(/static/main/img/icon_move.png) 0 50% no-repeat;
-    margin-right: 10px;
-    vertical-align: middle;
+    background-size: cover;
+    margin: 4px 7px 4px 7px;
+    cursor: pointer;
   }
+
+  .add_row {
+    display: inline-block;
+    width: 58px;
+    height: 40px;
+    background-image: url(/static/main/img/add_arrow.png);
+    background-size: cover;
+    margin: -13px 0 0 -30px;
+    cursor: pointer;
+  }
+
+  .del_row {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    background-image: url(/static/main/img/del_row.png);
+    background-size: cover;
+    cursor: pointer;
+  }
+
 
   .item_tag {
     font-size: 0.9em;
@@ -146,12 +164,20 @@ body {
 
   /* save_result */
 
-  #save_result > img {
+  #save_result > img, #send_to_review_result > img {
     width: 30px;
     margin: 10px 0 0 12px;
   }
+  
+  .save_button {
+    font-size: 2em;
+  }
 
-  #result > div {
+  .result {
+    display: inline-block;
+  }
+
+  .result > div {
     float: left;
   }
 
@@ -166,9 +192,14 @@ body {
   color: rgb(0, 22, 223);
 }
 
-.btn-edit {
-  color: rgb(0, 179, 30);
+.btn-log {
+  color: rgb(0, 95, 16);
 }
+
+.btn-reject {
+  color: rgb(253, 122, 0);
+}
+
 
 .btn-get-translation-unique {
   color: rgb(0, 47, 255);
@@ -185,4 +216,66 @@ body {
   font-weight: bold;
   border-radius: 14px 0 10px 0;
   padding: 5px;
+}
+
+.href_accept {
+  color: rgb(0, 153, 13);
+}
+
+.href_decline {
+  color: rgb(253, 122, 0);
+}
+
+
+/* Progress bar */
+.circle, .circle:after, .circle:before {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box !important;
+}
+
+/* Form Progress */
+.progress_bar {
+  text-align: center;
+}
+
+.progress_bar .circle {
+  display: inline-block;
+  background: #fff;
+  width: 40px; height: 40px;
+  border-radius: 40px;
+  border: 1px solid #d5d5da;
+}
+
+.progress_bar .circle .label {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  border-radius: 30px;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFF;
+}
+
+
+/* Done / Active */
+
+.progress_bar .circle.done {
+  background: #eee;
+}
+
+.progress_bar .circle.done .label {
+  background: #8bc435;
+}
+
+
+.progress_bar .circle.active {
+  color: #FFF;
+  background: #8bc435;
+}
+.progress_bar .circle.active .label {
+  color: #FFF;
+  background: #fff;
 }

@@ -14,33 +14,100 @@
                 <th>Cайт</th>
                 <th width="100px">Список-страница</th>
                 <th>Название статьи</th>
-                <th width="100px">Статус</th>
-                <th width="50px">% уник оригинала</th>
-                <th width="50px">% уник перевода</th>
+                <th width="90px">Статус</th>
+                <th width="100px">Этап</th>
+                <th width="200px">Действие</th>
+
+                <th width="50px">Парсинг контента</th>
+                <th width="50px">Проверка уник оригинала</th>
+                <th width="50px">Авто перевод</th>
+                <th width="50px">Перевод</th>
+                <th width="50px">Проверка уник перевода</th>
+                <th width="50px">Ревью</th>
+                <th width="50px">Публикация</th>
+
                 <th width="100px">Создана</th>
-                <th width="50px">Перевести</th>
-                <th width="50px">Изменить</th>
-                <th width="50px">Удалить</th>
+                <th width="25px"></th>
+                <th width="25px"></th>
+                <th width="25px"></th>
+                <th width="25px"></th>
               </tr>
             </thead>
             <tbody id="tr_edit_body">
               {% for article in articles %}
-              <tr>
+              <tr class="progress_bar">
                 <td>{{ article.list_page.site.domain_name }}</td>
                 <td><a href="{% url 'main:list_page_process' article.list_page.pk %}">{% if article.list_page.href %}{{ article.list_page.href }}{% else %}Главная{% endif %}</a></td>
                 <td><a href="{{ article.original_page_href }}">{% if article.title %}{{ article.title }}{% else %}Без названия{% endif %}</a></td>
-
                 <td style="font-weight: bold;">{{ article.status }}</td>
-                <td>{% if article.original_unique_percent >= 0 %}<span class="uniq_percent_span" style="background-color: {{ article.original_unique_percent|css_color_style_from_degree }};">{{ article.original_unique_percent }}</span>{% endif %}</td>
+                <td style="font-weight: bold;">{{ article.stage }}</td>
+
                 <td>
-                  <a href="{% url 'main:get_translation_unique' article.pk %}" class="btn-get-translation-unique"><i data-feather="download"></i></a>
-                  {% if article.translation_unique_percent >= 0 %}<span class="uniq_percent_span" style="background-color: {{ article.translation_unique_percent|css_color_style_from_degree }};">{{ article.translation_unique_percent }}</span>{% endif %}
+                  {% if article.status == 'Processing'%}
+                    {% if article.stage == 'Parsing' and not article.accepted_on_parsing_stage %}
+                    <a href="{% url 'main:article_accept_on_parsing_stage' article.pk %}" class="href_accept">Старт процесса</a> / <a href="{% url 'main:article_reject' article.pk %}" class="href_decline">Отклонить</a>
+                    {% elif article.stage == 'Traslating' %}
+                      <a href="{% url 'main:article_processing' article.pk %}">Перейти к переводу</a>
+                    {% elif article.stage == 'Review' and not article.accepted_on_review_stage%}
+                      <a href="{% url 'main:article_processing' article.pk %}">Перейти к переводу</a><br>
+                      <a href="{% url 'main:article_accept_on_review_stage' article.pk %}" class="href_accept">Принять</a> / <a href="{% url 'main:article_reject' article.pk %}" class="href_decline">Отклонить</a>
+                    {% endif %}
+                  {% endif %}
+                </td>
+
+                 <td>
+                  <div class="circle {{ article|get_stage_status:'Parsing' }}">
+                    <span class="label"></span>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Checking original unique' }}">
+                    <span class="label" {% if article.original_unique_percent >= 0 %} style="background-color: {{ article.original_unique_percent|css_color_style_from_degree }};">{{ article.original_unique_percent|floatformat:"0" }}{% else %}>{% endif %}</span>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Auto Translating' }}">
+                    <span class="label"></span>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Traslating' }}">
+                    <a href="{% url 'main:article_processing' article.pk %}">
+                      <span class="label"></span>
+                    </a>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Checking translation unique' }}">
+                    <a href="{% url 'main:get_translation_unique' article.pk %}">
+                      <span class="label" {% if article.translation_unique_percent >= 0 %} style="background-color: {{ article.translation_unique_percent|css_color_style_from_degree }};">{{ article.translation_unique_percent|floatformat:"0" }}{% else %}>{% endif %}</span>
+                    </a>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Review' }}">
+                    <span class="label"></span>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="circle {{ article|get_stage_status:'Publishing' }}">
+                    <a href="{% url 'main:article_publish' article.pk %}">
+                      <span class="label"></span>
+                    </a>
+                  </div>
                 </td>
 
                 <td>{{ article.created|date:"d.m.Y H:i:s" }}</td>
-                <td><a href="{% url 'main:article_processing' article.pk %}" class="btn-edit"><i data-feather="edit"></i></a></td>
                 <td><a href="{% url 'main:article_edit' article.pk %}" class="btn-chng"><i data-feather="settings"></i></a></td>
+                <td><a href="{% url 'main:article_log' article.pk %}" class="btn-log"><i data-feather="list"></i></a></td>
                 <td><a href="{% url 'main:article_del' article.pk %}" class="btn-del"><i data-feather="x"></i></a></td>
+                <td><a href="{% url 'main:article_reject' article.pk %}" class="btn-reject"><i data-feather="trash-2"></i></a></td>
               </tr>
               {% endfor %}
             </tbody>
