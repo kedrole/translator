@@ -41,7 +41,7 @@ def articles_list_view(request):
 
 def articles_work_list_view(request):
     articles = Article.objects.filter(status__in=['Processing'])
-    
+    print(articles)    
     return render(request, r'main/articles_list.html', {"articles": articles})
 
 def articles_not_work_list_view(request):

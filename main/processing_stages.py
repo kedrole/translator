@@ -1,4 +1,5 @@
-from . import search, unique, yandex_translate
+import traceback
+from . import search, unique, yandex_translate, selenium_translate
 from .models import Article, ArticleItem, ArticleImage, ListPage, Log
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -76,53 +77,11 @@ def STAGE_parse_articles_with_stage_parsing():
             if article.accepted_on_parsing_stage:
                 process_stage_with_lock_and_try(f_processing=parse_article, article=article, stage_name="parsing article")
 
-    def parse_article(article):
-        def _():
-            with transaction.atomic():
-                article.articleitem_set.all().delete()
-
-                print("_______________________________")
-                print("Контент: " + article.original_page_href)
-                (title, content_blocks) = get_translate_content_and_images_src(article)
-
-                # Установить заголовок в отдельную переменную и в первый article_item
-                article.title = title
-                article_item = ArticleItem(article=article, tag='title', type='Заголовок', original=title, original_text=title, translation='')
-                article_item.save()
-
-                for item in content_blocks:
-                    article_item = ArticleItem(article=article, tag=item['tag'], type=get_type_name(item['tag']), original=item['original'], original_text=item['original'], translation='')
-
-                    # В случае если article_item - изображение
-                    if 'src' in item:
-                        # Если адрес изображения не начинается с http, пропускаем
-                        if not item['src'].startswith('http'):
-                            log("Пропуск изображения с src = " + item['src'], article)
-                            continue
-
-                        article_item.type = 'Изображение'
-
-                        article_image = ArticleImage(article=article, src=item['src'], base64_original=get_base64_from_img_src(item['src']))
-                        article_image.save()
-
-                        article_item.article_image = article_image
-
-                    article_item.save()
-
-                article.stage = get_next_stage(article)
-                article.save()
-                log("Проведен парсинг статьи: " + article.original_page_href, article)
-
-        def get_translate_content_and_images_src(article):
-            parser = search.ParserArticlePage()
-
-            print("start get_page")
-            page = parser.get_page(article.original_page_href)
-
-            print("start get_content")
-            (title, content_blocks) = parser.get_content_from_article(article, page)
-
-            return (title, content_blocks)
+    def parse_article(article) -> None:
+        def set_title_and_first_titleitem(article, title):
+            article.title = title
+            article_item = ArticleItem(article=article, tag='title', type='Заголовок', original=title, original_text=title, translation='')
+            article_item.save()
 
         def get_base64_from_img_src(src):
             try:
@@ -152,7 +111,43 @@ def STAGE_parse_articles_with_stage_parsing():
             elif tag_name in ['img']:
                 type_name = 'Изображение'
             return type_name
-        _()
+
+        with transaction.atomic():
+            article.articleitem_set.all().delete()
+
+            print("_______________________________")
+            print("Контент: " + article.original_page_href)
+            content = search.ParserArticlePage().get_content_from_article(article)
+            if not content:
+                return
+            (title, content_blocks) = content
+
+            # Установить заголовок в отдельную переменную и в первый article_item
+            set_title_and_first_titleitem(article, title)
+
+            for item in content_blocks:
+                # В случае если article_item - изображение
+                if 'src' in item:
+                    article_item = ArticleItem(article=article, type='Изображение')
+                
+                    # Если адрес изображения не начинается с http, пропускаем
+                    if not item['src'].startswith('http'):
+                        log("Пропуск изображения с src = " + item['src'], article)
+                        continue
+
+                    article_image = ArticleImage(article=article, src=item['src'], base64_original=get_base64_from_img_src(item['src']))
+                    article_image.save()
+
+                    article_item.article_image = article_image
+                else:
+                    article_item = ArticleItem(article=article, tag=item['tag'], type=get_type_name(item['tag']), original=item['original'], original_text=item['original'], translation='')
+
+                article_item.save()
+
+            article.stage = get_next_stage(article)
+            article.save()
+            log("Проведен парсинг статьи: " + article.original_page_href, article)
+
     _()
 
 @shared_task
@@ -298,21 +293,18 @@ def STAGE_get_translation_articles_with_stage_autotranslating():
 
             original_list = [item.original for item in articleitem_set]
 
-            (status, result) = yandex_translate.YandexTranslate().get_translation_list(original_list)
-            if status == "error":
-                article.status = 'Error'
-                log("Ошибка при получении перевода текста: " + str(result), article)
-            elif status == "success":
-                if len(articleitem_set) != len(result):
-                    log("Длина массива оригинальных фрагментов не равна длине массива переведенных фрагментов. " + str(len(articleitem_set)) + " != " + str(len(translated_items)), article)
-                    article.status = 'Error'
-                else:
-                    with transaction.atomic():
-                        for idx, articleitem in enumerate(articleitem_set):
-                            articleitem.translation = result[idx]
-                            articleitem.save()
-                    log("Перевод статьи загружен", article)
-                    article.stage = get_next_stage(article)
+            #(status, result) = yandex_translate.YandexTranslate().get_translation_list(original_list)
+            try:
+                result = selenium_translate.get_translation_list(original_list)
+                
+                with transaction.atomic():
+                    for idx, articleitem in enumerate(articleitem_set):
+                        articleitem.translation = result[idx]
+                        articleitem.save()
+                log("Перевод статьи загружен", article)
+                article.stage = get_next_stage(article)
+            except Exception as e:
+                log("Ошибка при получении перевода текста: " + str(result) + " Traceback: " + str(traceback.format_exc()), article)
 
         if settings.DO_NOT_TRANSLATE_ARTICLES:
             log("SKIP_TRANSLATING_ARTICLE", article)

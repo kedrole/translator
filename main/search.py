@@ -1,4 +1,5 @@
 import datetime
+from typing import List, Tuple
 import requests
 import re
 import os
@@ -27,13 +28,13 @@ class ParserListArticlesPage:
 
         self.max_page_count = list_page.max_page_count
         if list_page.last_checked:
-            print("DAAAAAAAAAAAA")
             self.max_page_count = 1
-        else:
-            print("NEEEEEEEEEEEEEEEt")
 
     def get_page(self, page):
-        return self.session.get(page).text
+        try:
+            return self.session.get(page).text
+        except Exception as e:
+            log("Ошибка получения страницы " + page + " " + str(e))
 
     #def tag_starts_with_stopfraze(self, tag):
     #    if str(tag).startswith(self.stop_fraze):
@@ -59,11 +60,9 @@ class ParserListArticlesPage:
         if page_num:
             page_href = self.page_href.replace("{page}", str(page_num))
 
-        page = ''
-        try:
-            page = self.get_page(page_href)
-        except Exception as e:
-            log("Ошибка получения страницы " + page_href + " " + str(e))
+
+        page = self.get_page(page_href)
+        if not page:
             return []
 
         soup = BeautifulSoup(page, 'html.parser')
@@ -71,8 +70,6 @@ class ParserListArticlesPage:
 
         print("Найдено блоков статей: " + str(len(blocks_articles)))
         return [block.find('a') for block in blocks_articles if str(type(block)) == "<class 'bs4.element.Tag'>"]
-
-
 
 class ParserArticlePage:
     def __init__(self):
@@ -99,32 +96,38 @@ class ParserArticlePage:
     def get_page(self, page):
         return self.session.get(page).text
 
+    def tagname_mean_whole_separate_block(self, tagname):
+        return str(tagname) in self.paragraph_tags or str(tagname) in self.header_tags or str(tagname) == "li"
+
     def add_items_recoursive(self, tag, parent_tag_name, nesting_level):
         #print("--------УВ: " + str(nesting_level))
         #if self.tag_starts_with_stopfraze(tag):
         #    return
 
         if str(type(tag)) == "<class 'bs4.element.Tag'>":
-            if str(tag.name) in self.paragraph_tags or str(tag.name) in self.header_tags or str(tag.name) == "li":
-                print(str(tag.name) + "------------------- в списке тегов, добавление текста")
+            if self.tagname_mean_whole_separate_block(tag.name):
+                print(str(tag.name) + "------------------- в списке тегов")
                 if self.block_text_is_garbage(tag.text.strip()):
+                    print("__block__is_garbage__,try find images")
                     # try_find_images(tag)
                     for child in tag.children:
                         self.add_items_recoursive(child, str(tag.name), nesting_level + 1)
                 else:
-                    print("# Before clearing: " + str(tag))
-                    print("# After clearing: " + str(self.get_cleared_object(tag)))
+                    #print("# Before clearing: " + str(tag))
+                    #print("# After clearing: " + str(self.get_cleared_object(tag)))
+                    print("Adding...")
                     self.res_objects.append({"original": str(self.get_cleared_object(tag)).strip(), "original_text": str(tag.text).strip(), "tag": tag.name, "nesting_lvl": nesting_level, "parent_tag": parent_tag_name})
                 
                 #print("\n[" + self.res_objects[-1]['tag'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
 
-            elif str(tag.name) == 'img' and 'src' in tag:
+            elif self.tag_is_image(tag):
                 print('ИЗОБРАЖЕНИЕ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 self.res_objects.append({"src": tag['src'], "original": "", "tag": tag.name, "nesting_lvl": nesting_level})
             else:
                 print(str(tag.name) + " ------------------- НЕ в списке тегов")
-
+                print("test1: " + str(str(tag)))
                 if self.all_child_are_inner_tags_or_strings(tag) and not self.block_text_is_garbage(tag.text.strip()):
+                    print("Adding...")
                     self.res_objects.append({"original": str(self.get_cleared_object(tag)).strip(), "original_text": str(tag.text).strip(), "tag": tag.name, "nesting_lvl": nesting_level})
                 else:
                     for child in tag.children:
@@ -133,11 +136,14 @@ class ParserArticlePage:
         elif str(type(tag)) == "<class 'bs4.element.NavigableString'>":
             if self.block_text_is_garbage(str(tag).strip()):
                 return
-                
+
             self.res_objects.append({"original_text": str(tag).strip(), "original": str(tag).strip(), "tag": tag.parent.name, "nesting_lvl": nesting_level})
             #print("[" + self.res_objects[-1]['tag'] + "] " + str(self.res_objects[-1]['nesting_lvl']) + " " + self.res_objects[-1]['val'])
         else:
             print("ТИП: " + str(type(tag)))
+
+    def tag_is_image(self, tag):
+        return str(tag.name) == 'img' and tag.has_attr('src')
 
     def block_text_is_garbage(self, text):
         if text == "":
@@ -152,24 +158,47 @@ class ParserArticlePage:
         return False
 
     def all_child_are_inner_tags_or_strings(self, tag):
-        print("$1")
+        def check_if_image_in_tag(tag):
+            def tag_is_image(tag):
+                return str(tag.name) == 'img' and tag.has_attr('src')
+
+            if str(type(tag)) == "<class 'bs4.element.NavigableString'>":
+                return False
+
+            if tag_is_image(tag):
+                return True
+
+            for child in tag.children:
+                if check_if_image_in_tag(child):
+                    return True
+
         for child_tag in tag.children:
             if str(type(child_tag)) == "<class 'bs4.element.NavigableString'>":
                 continue
 
             if str(child_tag.name) not in self.inner_paragraph_tags:
                 return False
-                
-        print("$2")
+
+        if check_if_image_in_tag(tag):
+            return False
+
         return True
 
     def get_cleared_object(self, tag):
-        def _():
+        ''' returns tag cleared from unwanted tags and attributes '''
+        def get_cleared_from_unwanted_tags(self, tag):
+            '''  returns bs4 tag, consists only of 'a', 'strong', 'b', 'i', 'br', 'code' '''
+            def get_cleared_tag(tag):
+                if tag.name not in ['a', 'strong', 'b', 'i', 'br', 'code']:
+                    _tag = ''.join([str(child) for child in tag.children])
+                    return BeautifulSoup(_tag, 'html.parser')
+                return tag
+
             if tag.text == '':
                 return ''
 
             _tag = get_cleared_tag(tag)
-            print("After cleaning: " + str(_tag))
+            #print("After cleaning: " + str(_tag))
 
             if len(_tag.contents) == 1:
                 return _tag
@@ -184,15 +213,30 @@ class ParserArticlePage:
                 print("Res: " + str(BeautifulSoup(''.join([str(res) for res in res_list]), 'html.parser')))
                 return BeautifulSoup(''.join([str(res) for res in res_list]), 'html.parser')
 
-        def get_cleared_tag(tag):
-            if tag.name not in ['a', 'strong', 'b', 'i', 'br', 'code']:
-                _tag = ''.join([str(child) for child in tag.children])
-                return BeautifulSoup(_tag, 'html.parser')
+        def get_cleared_of_attributes(tag) -> str:
+            ''' delete all attrs from tag and children '''
+            def del_attrs_from_tag(tag) -> None:
+                for attr in list(tag.attrs):
+                    del tag.attrs[attr]
+            
+            if str(type(tag)) == "<class 'bs4.element.NavigableString'>":
+                return tag
+                
+            del_attrs_from_tag(tag)
+
+            for child in tag.children:
+                child = get_cleared_of_attributes(child)
+
             return tag
 
-        return _()
+        tag = get_cleared_from_unwanted_tags(self, tag)
+        return get_cleared_of_attributes(tag)
 
-    def get_content_from_article(self, article, page):
+    def get_content_from_article(self, article) -> Tuple[str, List[dict]]:
+        page = self.get_page(article.original_page_href)
+        if not page:
+            return
+
         self.res_objects = []
 
         soup = BeautifulSoup(page, 'html.parser')
@@ -200,10 +244,12 @@ class ParserArticlePage:
         title = soup.find('title').text
         print("Title: " + title)
 
-        #block_content = soup.find(article["content_tag_name"], attrs={article["content_property_name"]:article["content_property_value"]})
         block_content = soup.find(article.list_page.site.content_tag_name, attrs={article.list_page.site.content_property_name: article.list_page.site.content_property_value})
 
         self.add_items_recoursive(block_content, "MAIN", 0)
+
+        if len(self.res_objects) == 0:
+            return
 
         for tag in self.res_objects:
             print("[" + tag['tag'] + " - " + str(tag['nesting_lvl']) + "]  " + tag['original'])

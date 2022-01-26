@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  test:
+    image: ubuntu
+    volumes:
+      - .:/app
+    command: sleep 99999999999
