@@ -1,8 +1,0 @@
-version: "3"
-
-services:
-    test:
-        image: seleniarm/node-chromium
-        volumes:
-          - .:/app
-        command: sleep 111111111111111
